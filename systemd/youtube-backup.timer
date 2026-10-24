@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up YouTube SQLite databases daily
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+Unit=youtube-backup.service
+
+[Install]
+WantedBy=timers.target

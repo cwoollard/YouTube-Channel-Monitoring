@@ -1,0 +1,9 @@
+{
+  "channels": [
+    {"id":"stephen","name":"Stephen J Reid","creator":"Stephen J Reid","url":"https://www.youtube.com/watch?v=qGJZCsoN1pI","database":"data/youtube_channel_monitor.sqlite3","recent":20,"interval":3600,"delay":1.5},
+    {"id":"paul","name":"Paul Messner","creator":"Paul Messner","url":"https://www.youtube.com/@PaulMessner","database":"data/paul/youtube_channel_monitor.sqlite3","recent":20,"interval":3600,"delay":2},
+    {"id":"honest","name":"Honest Ramble","creator":"Paul Messner","url":"https://www.youtube.com/@honestramble","database":"data/honest/youtube_channel_monitor.sqlite3","recent":20,"interval":3600,"delay":2},
+    {"id":"katie","name":"Katie Roams","creator":"Katie Roams","url":"https://www.youtube.com/@Katieroams","database":"data/katie/youtube_channel_monitor.sqlite3","recent":20,"interval":3600,"delay":2},
+    {"id":"goodbloke","name":"Good Bloke Outdoors","creator":"Good Bloke Outdoors","url":"https://www.youtube.com/@GoodBlokeOutdoors","database":"data/goodbloke/youtube_channel_monitor.sqlite3","recent":20,"interval":3600,"delay":2}
+  ]
+}

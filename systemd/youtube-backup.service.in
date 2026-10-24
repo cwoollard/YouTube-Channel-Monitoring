@@ -1,0 +1,10 @@
+[Unit]
+Description=Consistent YouTube SQLite backup (optional S3)
+
+[Service]
+Type=oneshot
+User=@USER@
+Group=@GROUP@
+WorkingDirectory=@APP_DIR@
+EnvironmentFile=-@APP_DIR@/.env
+ExecStart=@APP_DIR@/scripts/backup-run.sh

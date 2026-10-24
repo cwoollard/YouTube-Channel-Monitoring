@@ -1,0 +1,11 @@
+[tools]
+python = "3.13"
+
+[tasks.setup]
+run = "bash scripts/install.sh"
+
+[tasks.test]
+run = "python3 -m unittest discover -s tests -v"
+
+[tasks.report]
+run = ".venv/bin/python youtube_multi_report.py --config channels.json --output-dir reports"
