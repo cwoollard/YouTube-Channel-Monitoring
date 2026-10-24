@@ -10,7 +10,34 @@ from pathlib import Path
 JS = r'''<script id="yt-monitor-export-tools">
 (function(){
  const style=document.createElement('style');
- style.textContent='.yt-export-panel{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 16px}.yt-export-panel button{font:13px system-ui;padding:6px 10px;border:1px solid #b7c5d8;background:#fff;border-radius:6px;cursor:pointer}';
+style.textContent=`
+ .yt-export-panel {
+   display: flex;
+   gap: 8px;
+   flex-wrap: wrap;
+   margin: 12px 0 4px;
+   padding-top: 12px;
+   border-top: 1px solid #e5e9f0;
+   clear: both;
+ }
+
+ .yt-export-panel button {
+   font: 13px system-ui;
+   padding: 7px 12px;
+   border: 1px solid #b7c5d8;
+   background: #fff;
+   border-radius: 6px;
+   cursor: pointer;
+ }
+
+ .yt-export-panel button:hover {
+   background: #f1f5fb;
+ }
+
+ .card {
+   overflow: visible !important;
+ }
+`;
  document.head.appendChild(style);
  function save(blob,name){const a=document.createElement('a');const u=URL.createObjectURL(blob);a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1500)}
  function install(){
@@ -35,7 +62,14 @@ JS = r'''<script id="yt-monitor-export-tools">
       }else await Plotly.downloadImage(graph,{format:type.toLowerCase(),filename:stem,width:1200,height:700,scale:2});
      }catch(e){alert('Export failed: '+e.message)}
     });bar.appendChild(btn);
-   });graph.parentElement.insertBefore(bar,graph.nextSibling);
+   });
+const card = graph.closest('.card');
+
+if (card) {
+    card.appendChild(bar);
+} else {
+    graph.parentElement.insertBefore(bar, graph.nextSibling);
+}
   });
  }
  setInterval(install,1500);install();

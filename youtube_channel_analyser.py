@@ -121,7 +121,7 @@ def main():
     page=f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YouTube Channel Analysis</title><style>
     body{{font:15px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#172337;background:#f4f7fb;margin:0}}
     main{{max-width:1320px;margin:auto;padding:24px}}h1{{font-size:32px}}h2{{margin-top:42px}}
-    .card{{background:white;border-radius:12px;padding:18px;margin:18px 0;box-shadow:0 2px 14px #18315312;overflow-x:auto}}
+    .card{{background:white;border-radius:12px;padding:18px;margin:18px 0;box-shadow:0 2px 14px #18315312;overflow:visible}}
     .data{{border-collapse:collapse;width:100%;font-size:13px}}.data td,.data th{{padding:9px;border-bottom:1px solid #e5e9f0;text-align:left;max-width:440px;overflow-wrap:anywhere}}
     select{{font:inherit;padding:10px;width:min(100%,700px);border:1px solid #bac8db;border-radius:8px;background:white}} .video-detail h3{{margin:0 0 8px}}
     .data th{{background:#eaf0f8}}.note{{background:#fff8e8;padding:16px;border-left:4px solid #e0a522}}
