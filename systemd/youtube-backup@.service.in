@@ -1,0 +1,18 @@
+[Unit]
+Description=YouTube Monitor %i verified backup to S3
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=@USER@
+Group=@GROUP@
+WorkingDirectory=@APP_DIR@
+Environment=HOME=@HOME@
+Environment=YOUTUBE_BACKUP_PROFILE=youtube-backup
+Environment=YOUTUBE_BACKUP_BUCKET=@BUCKET@
+ExecStart=/usr/bin/bash @APP_DIR@/scripts/backup-run.sh %i
+TimeoutStartSec=30min
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true

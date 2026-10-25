@@ -1,99 +1,58 @@
-# YouTube Channel Monitoring — v4 development package
+# YouTube Monitor v4.1 backup upgrade
 
-A Raspberry Pi-friendly, self-hosted YouTube statistics collector with separate SQLite databases per channel, interactive Plotly reports, channel comparisons, and optional graph exports.
+Copy `scripts/backup.py`, `scripts/restore.py`, `scripts/backup-run.sh`, and `tests/test_backup.py` into the **monitoring** repository. Keep existing v4 files backed up until tests pass. Copy the systemd files into its `systemd/` directory. Do not deploy the timers until v4 production cutover is complete.
 
-**Repository:** https://github.com/cwoollard/YouTube-Channel-Monitoring
-
-## Current status
-
-This is a **v4 development starter**, based on the working v3.1 monitor, v3.1 analyser, comparison v2, and multi-report generator supplied from the Raspberry Pi. The source files are kept intact to minimise migration risk. The existing Pi services should continue running until a planned cutover.
-
-Configured channels: Stephen J Reid, Paul Messner, Honest Ramble (also Paul Messner), Katie Roams, and Good Bloke Outdoors. The two new channel handles are user-supplied and have not yet been tested against YouTube.
-
-## Development / fresh setup
-
-Requires Python 3.13 and `python3-venv` (Debian: `sudo apt install python3-venv`).
+## Local smoke test on Raspberry Pi (no AWS writes)
 
 ```bash
-bash scripts/install.sh
+cd ~/youtube-monitor-v4
 .venv/bin/python -m unittest discover -s tests -v
-.venv/bin/python monitor_channel.py katie --print-command
+.venv/bin/python scripts/backup.py --config channels.json --thumbnail-dir thumbnails --dest backups --allow-missing katie --allow-missing goodbloke
+BACKUP=$(ls -t backups/youtube-monitor-daily-*.tar.gz | head -1)
+.venv/bin/python scripts/restore.py "$BACKUP" --verify-only
+.venv/bin/python scripts/restore.py "$BACKUP" --output "/tmp/youtube-restore-$(date +%s)"
 ```
 
-To start one channel manually (contacts YouTube and creates its own database):
+`--allow-missing` is **only for the v4 staging period** when Katie/Good Bloke may not have databases yet. Production backup-run.sh deliberately has no such exception: all configured databases must exist. Do not enable timers until all five are present. The source directory `thumbnails/` must exist.
+
+## First real S3 upload (manual, after staging is complete)
 
 ```bash
-.venv/bin/python monitor_channel.py katie
+cd ~/youtube-monitor-v4
+.venv/bin/python scripts/backup.py --config channels.json --thumbnail-dir thumbnails --dest backups --tier daily --profile youtube-backup --s3-uri s3://youtube-monitor-backups-001215999505-cw/daily/
 ```
 
-To generate reports from available databases:
+Verify S3 using the Mac's `personal-admin` profile; the Pi uploader is intentionally write-only. Download a backup using the Mac admin identity and run `restore.py --verify-only` on the downloaded archive.
+
+## Systemd deployment (only after v4 production cutover)
+
+**Warning:** existing v4 `youtube-backup.service` / `youtube-backup.timer` may exist. Do not run two backup schedules. Inspect and disable the legacy backup timer before enabling these new timers. Keep monitor/report services unchanged.
+
+On the Pi as `cwoollard`, generate a unit from the template:
 
 ```bash
-.venv/bin/python youtube_multi_report.py --config channels.json --output-dir reports
+cd ~/youtube-monitor-v4
+sed -e "s|@APP_DIR@|$PWD|g" -e "s|@USER@|$(id -un)|g" -e "s|@GROUP@|$(id -gn)|g" -e "s|@HOME@|$HOME|g" -e 's|@BUCKET@|youtube-monitor-backups-001215999505-cw|g' systemd/youtube-backup@.service.in | sudo tee /etc/systemd/system/youtube-backup@.service >/dev/null
+sudo install -m 0644 systemd/youtube-backup-{daily,weekly,monthly}.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl cat youtube-backup@.service
 ```
 
-To add export controls to reports (optional; see limitations below):
+After ensuring the old timer is disabled and all databases exist:
 
 ```bash
-.venv/bin/python scripts/add_exports.py reports/channel-*.html
+sudo systemctl enable --now youtube-backup-daily.timer youtube-backup-weekly.timer youtube-backup-monthly.timer
+systemctl list-timers --all | grep youtube-backup
+sudo systemctl start youtube-backup@daily.service
+journalctl -u youtube-backup@daily.service -n 40 --no-pager
 ```
 
-The existing nginx config serves `reports/youtube_channel_report.html` at `/` and allows `channel-*.html` files. Adapt the `root` path in `nginx/youtube-monitor.conf` to your installation directory. Keep nginx LAN-only unless you configure authentication and TLS.
+`backup-run.sh` requires `flock` (util-linux) and a Pi AWS profile named `youtube-backup`. The systemd unit runs as the Pi account to access its credentials. Local retention is 7 days per tier; S3 lifecycle handles remote retention. S3 upload errors retain the local archive for recovery.
 
-## Migrating an existing Raspberry Pi (do not skip)
+## Limitations and operational notes
 
-**Do not run the new monitor instances alongside existing instances pointing to the same SQLite files.**
-
-1. Clone this repository into a *separate directory*, not over the live installation.
-2. Review `channels.json`, dependencies, service templates, and the installer.
-3. Make a consistent SQLite backup of the live databases before any cutover (`scripts/backup.py` works against a matching config).
-4. Preserve the existing data layout. The `stephen`, `paul`, and `honest` database paths are unchanged. For production, copy the new source files into the existing `/home/cwoollard/youtube-monitor` directory only during a planned maintenance window, or point the template service at the existing directory.
-5. Install the template unit files with `bash scripts/deploy-systemd.sh --apply` **from the intended production directory**. This installs unit files but does not start or stop anything.
-6. Stop and disable the three legacy monitor services; check they are inactive. Then enable/start `youtube-monitor@stephen`, `youtube-monitor@paul`, `youtube-monitor@honest`, `youtube-monitor@katie`, `youtube-monitor@goodbloke`. Start them one at a time to stagger YouTube traffic. Only then enable `youtube-report.timer`.
-7. Check `journalctl`, database counts and reports before considering the migration complete.
-
-The template services resolve their paths at deployment time; they are not tied to the original username. The report timer runs at **:50 each hour**. If a monitor starts later than this or has not finished, that hour's report may not include its latest poll.
-
-## Backups
-
-Create SQLite-consistent snapshots (safe with active writers):
-
-```bash
-.venv/bin/python scripts/backup.py --config channels.json --dest backups
-```
-
-Optional S3 upload, after configuring AWS CLI with a least-privilege identity:
-
-```bash
-.venv/bin/python scripts/backup.py --config channels.json --dest backups --s3-uri s3://YOUR-BUCKET/youtube-monitor/
-```
-
-Test a restore **into a new directory**:
-
-```bash
-.venv/bin/python scripts/restore.py backups/youtube-monitor-YYYYMMDDTHHMMSSZ.tar.gz --output /tmp/yt-restore-test
-```
-
-The starter backup contains SQLite databases and `channels.json`. **It does not yet archive historical thumbnail images or implement retention.** An optional daily backup timer is included but must be enabled deliberately after reviewing destination and credentials. Do not treat S3 backups as configured until IAM, lifecycle policies, encryption and scheduled uploads have been set up and a restore has been tested.
-
-To enable optional daily backups after configuring the destination, install the systemd units and run `sudo systemctl enable --now youtube-backup.timer`. The default is local backups only. For S3, copy `.env.example` to `.env`, set `YOUTUBE_BACKUP_S3_URI`, `chmod 600 .env`, and configure an AWS CLI identity with limited bucket permissions. **No retention pruning is performed yet**; monitor free disk space and configure S3 lifecycle policies.
-
-## Export controls
-
-`add_exports.py` adds client-side PNG, SVG, and self-contained HTML buttons to Plotly graphs in generated channel report files. Export uses the currently rendered graph. **This is a first-pass implementation:** validate in Safari and Chromium, especially on the comparison page, before sharing files. The multi-report generator automatically injects export controls each time reports are regenerated. Browser behaviour should be validated in Safari and Chromium before sharing.
-
-## Configuration
-
-`channels.json` contains stable channel IDs, display names, creators, YouTube URLs, database paths and polling options. Add another channel by adding a unique ID and database path. `monitor_channel.py` is a thin wrapper around the existing v3.1 script, preserving the SQLite schema.
-
-## Security
-
-Do not commit SQLite databases, thumbnails, reports, `.env` files, AWS credentials, SSH keys, or personal data. `.gitignore` excludes generated files by default. Review changes with `git status` before pushing. The report server does not implement authentication.
-
-## Planned follow-ups
-
-- Validate new channel handles and initial polling under conservative request limits.
-- Add integration tests for report exports and comparison interactions.
-- Validate browser exports on Safari and Chromium.
-- Add scheduled S3 backup/retention and restore verification.
-- Implement per-channel health reporting and clearer failed-observation counts.
+- SQLite database snapshots are consistent, but thumbnails copied during active monitoring are not an atomic multi-file snapshot. Historical thumbnails are usually immutable; verify application behaviour before relying on this for a point-in-time image.
+- S3 upload success is checked via AWS CLI exit status, not a remote read-back, because the Pi identity is write-only. Perform periodic independent download/restore drills using your Mac administrator identity.
+- Archives are fully verified locally before upload; verification extracts them temporarily and needs free disk space. Check disk space on the Pi before enabling scheduled jobs.
+- `backup.py` includes all configured channel databases; a missing database fails by default. For staging, explicitly pass `--allow-missing <channel-id>`.
+- Restore output uses `databases/<channel-id>.sqlite3`; consult `channels.json` to map restored snapshots back to their live locations. It never overwrites live databases.

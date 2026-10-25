@@ -1,0 +1,9 @@
+[Unit]
+Description=Weekly YouTube Monitor S3 backup
+[Timer]
+OnCalendar=Sun *-*-* 03:15:00
+Persistent=true
+RandomizedDelaySec=10min
+Unit=youtube-backup@weekly.service
+[Install]
+WantedBy=timers.target
