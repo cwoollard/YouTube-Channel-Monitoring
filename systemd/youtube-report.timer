@@ -2,7 +2,7 @@
 Description=Generate YouTube reports hourly
 
 [Timer]
-OnCalendar=*-*-* *:50:00
+OnCalendar=*-*-* *:10:00
 Persistent=true
 Unit=youtube-report.service
 
