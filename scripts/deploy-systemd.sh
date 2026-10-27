@@ -16,7 +16,7 @@ if [[ "$EUID" -eq 0 ]]; then
 fi
 
 usage() {
-    echo "Usage: $0 [--monitors|--backups|--publisher|--all]"
+    echo "Usage: $0 [--monitors|--backups|--publisher|--enable-publishing|--disable-publishing|--all]"
     echo
     echo "Installs systemd units without starting or enabling them."
     exit 1
@@ -25,7 +25,7 @@ usage() {
 MODE="${1:-}"
 
 case "$MODE" in
-    --monitors|--backups|--publisher|--all)
+    --monitors|--backups|--publisher|--enable-publishing|--disable-publishing|--all)
         ;;
     *)
         usage
@@ -90,13 +90,47 @@ if [[ "$MODE" == "--backups" || "$MODE" == "--all" ]]; then
 
 fi
 
-if [[ "$MODE" == "--publisher" || "$MODE" == "--all" ]]; then
+if [[ "$MODE" == "--publisher" ||
+      "$MODE" == "--enable-publishing" ||
+      "$MODE" == "--all" ]]; then
 
     echo "Installing publishing service..."
 
     install_template \
         "youtube-publish.service.in" \
         "youtube-publish.service"
+
+fi
+
+# Automatic public dashboard publishing
+DROPIN_DIR="/etc/systemd/system/youtube-report.service.d"
+DROPIN_FILE="$DROPIN_DIR/publish.conf"
+
+if [[ "$MODE" == "--enable-publishing" ]]; then
+
+    echo "Enabling automatic public dashboard publishing..."
+
+    sudo install -d -m 0755 "$DROPIN_DIR"
+
+    sudo install \
+        -m 0644 \
+        "$ROOT/systemd/youtube-report-publish.conf" \
+        "$DROPIN_FILE"
+
+    echo "Publishing integration installed."
+
+fi
+
+if [[ "$MODE" == "--disable-publishing" ]]; then
+
+    echo "Disabling automatic public dashboard publishing..."
+
+    if [[ -f "$DROPIN_FILE" ]]; then
+        sudo rm "$DROPIN_FILE"
+    fi
+
+    echo "Publishing integration removed."
+    echo "The local dashboard and hourly reporting remain enabled."
 
 fi
 
