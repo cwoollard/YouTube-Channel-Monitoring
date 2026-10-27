@@ -8,6 +8,7 @@ APP_GROUP="$(id -gn)"
 APP_HOME="$HOME"
 
 BACKUP_BUCKET="${YOUTUBE_BACKUP_BUCKET:-youtube-monitor-backups-001215999505-cw}"
+PUBLIC_BUCKET="${YOUTUBE_PUBLIC_BUCKET:-youtube-monitor-public-001215999505-cw}"
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "Run as the application user, not root." >&2
@@ -15,7 +16,7 @@ if [[ "$EUID" -eq 0 ]]; then
 fi
 
 usage() {
-    echo "Usage: $0 [--monitors|--backups|--all]"
+    echo "Usage: $0 [--monitors|--backups|--publisher|--all]"
     echo
     echo "Installs systemd units without starting or enabling them."
     exit 1
@@ -24,7 +25,7 @@ usage() {
 MODE="${1:-}"
 
 case "$MODE" in
-    --monitors|--backups|--all)
+    --monitors|--backups|--publisher|--all)
         ;;
     *)
         usage
@@ -43,6 +44,7 @@ install_template() {
         -e "s|@GROUP@|$APP_GROUP|g" \
         -e "s|@HOME@|$APP_HOME|g" \
         -e "s|@BUCKET@|$BACKUP_BUCKET|g" \
+        -e "s|@PUBLIC_BUCKET@|$PUBLIC_BUCKET|g" \
         "$ROOT/systemd/$source" |
         sudo tee "/etc/systemd/system/$destination" >/dev/null
 }
@@ -85,6 +87,16 @@ if [[ "$MODE" == "--backups" || "$MODE" == "--all" ]]; then
     install_timer "youtube-backup-daily.timer"
     install_timer "youtube-backup-weekly.timer"
     install_timer "youtube-backup-monthly.timer"
+
+fi
+
+if [[ "$MODE" == "--publisher" || "$MODE" == "--all" ]]; then
+
+    echo "Installing publishing service..."
+
+    install_template \
+        "youtube-publish.service.in" \
+        "youtube-publish.service"
 
 fi
 
