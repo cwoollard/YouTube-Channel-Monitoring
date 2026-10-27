@@ -16,6 +16,9 @@ class ConfigTest(unittest.TestCase):
             cfg=Path(folder)/'channels.json'
             cfg.write_text('{"channels":[{"id":"stephen","url":"https://example.com","database":"data/youtube_channel_monitor.sqlite3"}]}')
             args=command(cfg,'stephen')
-            self.assertIn(str(Path(folder)/'data/youtube_channel_monitor.sqlite3'),args)
+            self.assertIn(
+                str((Path(folder) / 'data/youtube_channel_monitor.sqlite3').resolve()),
+                args
+            )
 
 if __name__=='__main__':unittest.main()

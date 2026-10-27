@@ -1,0 +1,17 @@
+[Unit]
+Description=Publish YouTube HTML reports to private S3 origin
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=@USER@
+Group=@GROUP@
+WorkingDirectory=@APP_DIR@
+Environment=HOME=@HOME@
+Environment=PYTHONUNBUFFERED=1
+ExecStart=@APP_DIR@/.venv/bin/python @APP_DIR@/scripts/publish.py --reports @APP_DIR@/reports --bucket @PUBLIC_BUCKET@ --profile youtube-publisher --region eu-west-2
+TimeoutStartSec=15min
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
